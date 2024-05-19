@@ -6,7 +6,8 @@ import { Navbar } from './components/nav'
 import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import Footer from './components/footer'
-import { baseUrl } from './sitemap'
+
+const baseUrl = 'https://www.kawamottyan.com'
 
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),

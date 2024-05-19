@@ -1,29 +1,32 @@
 import { notFound } from 'next/navigation'
 import { CustomMDX } from 'app/components/mdx'
-import { formatDate, getBlogPosts } from 'app/blog/utils'
-import { baseUrl } from 'app/sitemap'
+import { formatDate } from 'app/blog/utils'
+import { getBlogPosts } from 'app/action/getPost'
 
-export async function generateStaticParams() {
-  let posts = getBlogPosts()
+const baseUrl = 'https://www.kawamottyan.com'
 
-  return posts.map((post) => ({
-    slug: post.slug,
-  }))
+async function fetchPostBySlug(slug) {
+  let posts = await getBlogPosts();
+  if (!posts) {
+    return null;
+  }
+  return posts.find((post) => post.slug === slug);
 }
 
-export function generateMetadata({ params }) {
-  let post = getBlogPosts().find((post) => post.slug === params.slug)
-  if (!post) {
-    return
+export async function generateStaticParams() {
+  let posts = await getBlogPosts();
+  if (!posts) {
+    return [];
   }
+  return posts.map((post) => ({ slug: post.slug }));
+}
 
-  let {
-    title,
-    publishedAt: publishedTime,
-    summary: description,
-    image,
-  } = post.metadata
-  let ogImage = image ? image : `${baseUrl}/og?title=${encodeURIComponent(title)}`
+export async function generateMetadata({ params }) {
+  let post = await fetchPostBySlug(params.slug);
+  if (!post) {
+    return;
+  }
+  let { title, published_at: publishedTime, summary: description, image } = post;
 
   return {
     title,
@@ -34,26 +37,32 @@ export function generateMetadata({ params }) {
       type: 'article',
       publishedTime,
       url: `${baseUrl}/blog/${post.slug}`,
-      images: [
-        {
-          url: ogImage,
-        },
-      ],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: [ogImage],
     },
-  }
+  };
 }
 
-export default function Blog({ params }) {
-  let post = getBlogPosts().find((post) => post.slug === params.slug)
+export default async function Blog({ params }) {
+  let posts = await getBlogPosts();
+  if (!posts) {
+    notFound();
+    return;
+  }
+  let post = posts.find((post) => post.slug === params.slug);
 
   if (!post) {
-    notFound()
+    notFound();
+    return;
+  }
+
+  const { title, published_at, summary, image } = post;
+  if (!title || !published_at || !summary) {
+    notFound();
+    return;
   }
 
   return (
@@ -65,13 +74,11 @@ export default function Blog({ params }) {
           __html: JSON.stringify({
             '@context': 'https://schema.org',
             '@type': 'BlogPosting',
-            headline: post.metadata.title,
-            datePublished: post.metadata.publishedAt,
-            dateModified: post.metadata.publishedAt,
-            description: post.metadata.summary,
-            image: post.metadata.image
-              ? `${baseUrl}${post.metadata.image}`
-              : `/og?title=${encodeURIComponent(post.metadata.title)}`,
+            headline: title,
+            datePublished: published_at,
+            dateModified: published_at,
+            description: summary,
+            image: image ? `${baseUrl}${image}` : `/og?title=${encodeURIComponent(title)}`,
             url: `${baseUrl}/blog/${post.slug}`,
             author: {
               '@type': 'Person',
@@ -81,11 +88,11 @@ export default function Blog({ params }) {
         }}
       />
       <h1 className="title font-semibold text-2xl tracking-tighter">
-        {post.metadata.title}
+        {title}
       </h1>
       <div className="flex justify-between items-center mt-2 mb-8 text-sm">
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          {formatDate(post.metadata.publishedAt)}
+          {formatDate(published_at)}
         </p>
       </div>
       <article className="prose">

@@ -1,20 +1,44 @@
-import Link from 'next/link'
-import { formatDate, getBlogPosts } from 'app/blog/utils'
+'use client';
+
+import { getBlogPosts } from 'app/action/getPost';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { SafeBlog } from 'app/types';
+import { formatDate } from 'app/blog/utils';
 
 export function BlogPosts() {
-  let allBlogs = getBlogPosts()
+  const [blogs, setBlogs] = useState<SafeBlog[]>([]);
+
+  useEffect(() => {
+    async function fetchBlogs() {
+      try {
+        const blogPosts = await getBlogPosts();
+        if (blogPosts) {
+          setBlogs(blogPosts.map(post => ({
+            id: post.id,
+            title: post.title,
+            published_at: new Date(post.published_at),
+            summary: post.summary,
+            content: post.content,
+            slug: post.slug,
+            image: post.image,
+            language: post.language,
+            category: post.category,
+          })));
+        } else {
+          setBlogs([]);
+        }
+      } catch (error) {
+        console.error("Error fetching posts:", error);
+      }
+    }
+    fetchBlogs();
+  }, []);
 
   return (
     <div>
-      {allBlogs
-        .sort((a, b) => {
-          if (
-            new Date(a.metadata.publishedAt) > new Date(b.metadata.publishedAt)
-          ) {
-            return -1
-          }
-          return 1
-        })
+      {blogs
+        .sort((a, b) => new Date(a.published_at) > new Date(b.published_at) ? -1 : 1)
         .map((post) => (
           <Link
             key={post.slug}
@@ -23,14 +47,14 @@ export function BlogPosts() {
           >
             <div className="w-full flex flex-col md:flex-row space-x-0 md:space-x-2">
               <p className="text-neutral-600 dark:text-neutral-400 w-[100px] tabular-nums">
-                {formatDate(post.metadata.publishedAt, false)}
+                {formatDate(post.published_at.toISOString())}
               </p>
               <p className="text-neutral-900 dark:text-neutral-100 tracking-tight">
-                {post.metadata.title}
+                {post.title}
               </p>
             </div>
           </Link>
         ))}
     </div>
-  )
+  );
 }
