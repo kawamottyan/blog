@@ -1,6 +1,5 @@
 import { baseUrl } from 'app/lib/config';
 import { supabase } from 'app/lib/supabase';
-import { notFound } from 'next/navigation';
 
 export async function GET() {
   let today = new Date();
@@ -14,11 +13,11 @@ export async function GET() {
 
   if (error) {
     console.error(error);
-    return [];
+    return ;
   }
 
   if (!posts) {
-    notFound()
+    return
   }
 
   const itemsXml = posts

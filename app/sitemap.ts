@@ -5,10 +5,14 @@ import { notFound } from 'next/navigation';
 
 
 export default async function sitemap() {
+  let today = new Date();
 
   let { data: posts, error } = await supabase
-    .from('posts')
-    .select('id, title, published_at');
+  .from('posts')
+  .select('id, title, summary, published_at')
+  .not('published_at', 'is', null)
+  .lte('published_at', today.toISOString())
+  .order('published_at', { ascending: false });
 
   if (error) {
     console.error('Error fetching posts:', error);
