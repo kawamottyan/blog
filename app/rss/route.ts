@@ -3,9 +3,14 @@ import { supabase } from 'app/lib/supabase';
 import { notFound } from 'next/navigation';
 
 export async function GET() {
+  let today = new Date();
+
   let { data: posts, error } = await supabase
   .from('posts')
-  .select('id, title, published_at, summary');
+  .select('id, title, summary, published_at')
+  .not('published_at', 'is', null)
+  .lte('published_at', today.toISOString())
+  .order('published_at', { ascending: false });
 
   if (error) {
     console.error(error);
