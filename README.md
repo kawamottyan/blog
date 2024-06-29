@@ -1,1 +1,4 @@
-# blog
+```
+pnpm install
+pnpm dev
+```

@@ -1,69 +1,81 @@
 import { notFound } from 'next/navigation'
 import { CustomMDX } from 'app/components/mdx'
-import { formatDate } from 'app/blog/utils'
-import { getBlogPosts } from 'app/action/getPost'
-
-const baseUrl = 'https://www.kawamottyan.com'
-
-async function fetchPostBySlug(slug) {
-  let posts = await getBlogPosts();
-  if (!posts) {
-    return null;
-  }
-  return posts.find((post) => post.slug === slug);
-}
+import { formatDate } from 'app/components/utils'
+import { supabase } from 'app/lib/supabase'
+import { baseUrl } from 'app/lib/config';
 
 export async function generateStaticParams() {
-  let posts = await getBlogPosts();
-  if (!posts) {
+  let { data: posts, error } = await supabase
+  .from('posts')
+  .select('*');
+
+  if (error) {
+    console.error(error);
     return [];
   }
-  return posts.map((post) => ({ slug: post.slug }));
+
+  if (!posts) {
+    notFound()
+  }
+
+  return posts.map(post => ({
+    id: post.id,
+  }));
 }
 
 export async function generateMetadata({ params }) {
-  let post = await fetchPostBySlug(params.slug);
-  if (!post) {
+  let { data: posts, error } = await supabase
+  .from('posts')
+  .select('id, title, summary, published_at')
+  .eq("id", params.slug);
+
+  if (error) {
+    console.error(error);
+    return [];
+  }
+
+  if (!posts || posts.length === 0) {
+    notFound();
     return;
   }
-  let { title, published_at: publishedTime, summary: description, image } = post;
+
+  const { id, title, summary, published_at } = posts[0];
 
   return {
     title,
-    description,
+    summary,
     openGraph: {
       title,
-      description,
+      summary,
       type: 'article',
-      publishedTime,
-      url: `${baseUrl}/blog/${post.slug}`,
+      published_at,
+      url: `${baseUrl}/blog/${id}`,
     },
     twitter: {
       card: 'summary_large_image',
       title,
-      description,
+      summary,
     },
-  };
+  }
 }
 
 export default async function Blog({ params }) {
-  let posts = await getBlogPosts();
-  if (!posts) {
-    notFound();
-    return;
-  }
-  let post = posts.find((post) => post.slug === params.slug);
+  let { data: posts, error } = await supabase
+  .from('posts')
+  .select('id, title, summary, content, published_at')
+  .eq("id", params.slug);
 
-  if (!post) {
-    notFound();
-    return;
+  if (error) {
+    console.error(error);
+    return [];
   }
 
-  const { title, published_at, summary, image } = post;
-  if (!title || !published_at || !summary) {
+  if (!posts || posts.length === 0) {
     notFound();
     return;
   }
+
+  const { id, title, summary, content, published_at } = posts[0];
 
   return (
     <section>
@@ -78,8 +90,7 @@ export default async function Blog({ params }) {
             datePublished: published_at,
             dateModified: published_at,
             description: summary,
-            image: image ? `${baseUrl}${image}` : `/og?title=${encodeURIComponent(title)}`,
-            url: `${baseUrl}/blog/${post.slug}`,
+            url: `${baseUrl}/blog/${id}`,
             author: {
               '@type': 'Person',
               name: 'My Portfolio',
@@ -96,7 +107,7 @@ export default async function Blog({ params }) {
         </p>
       </div>
       <article className="prose">
-        <CustomMDX source={post.content} />
+        <CustomMDX source={content} />
       </article>
     </section>
   )
