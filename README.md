@@ -1,4 +1,4 @@
 ```
-pnpm install
+pnpm i
 pnpm dev
 ```
